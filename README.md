@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Global Axis Concepts
 
-## Getting Started
+A multi-tenant appointment-booking SaaS: businesses sign up, get a branded booking
+microsite, and take appointments — with a business dashboard, a staff portal, a customer
+portal, and a super-admin CMS.
 
-First, run the development server:
+Built with **Next.js 16** (App Router, Turbopack), **React 19**, **TypeScript**,
+**Tailwind CSS v4**, and **Firebase** (Auth + Cloud Firestore) on the client SDK.
+
+## Surfaces
+
+| Area | Route | Who |
+| --- | --- | --- |
+| Marketing site | `/`, `/pricing`, `/companies`, `/blogs`, `/faqs`, `/contact` | Public |
+| Tenant microsite + booking | `/[companySlug]`, `/[companySlug]/book` | Public / customers |
+| Business dashboard | `/dashboard/**` | Business owners |
+| Staff portal | `/staff`, `/staff/join` | Staff |
+| Customer portal | `/account` | Any signed-in user |
+| Super-admin + CMS | `/admin/**` | Platform owner (by email) |
+
+## Local development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # then fill in your Firebase config
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`npm run build` produces the production build (the same command Vercel runs).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+All config is the public Firebase Web SDK config (`NEXT_PUBLIC_*`, embedded in the client
+bundle and secured by Firestore rules). See [`.env.example`](.env.example) for the full list.
 
-## Learn More
+## Deploying to Vercel
 
-To learn more about Next.js, take a look at the following resources:
+1. **Import the repo** at [vercel.com/new](https://vercel.com/new). Vercel auto-detects
+   Next.js — no build settings to change (build `next build`, output handled automatically).
+2. **Add the environment variables** from `.env.example` (Production, Preview & Development).
+   Vercel rebuilds when you change them.
+3. **Deploy.** Pushes to the default branch ship to production; every other branch/PR gets a
+   preview URL.
+4. **Authorize the deployed domain in Firebase** so Google sign-in works:
+   Firebase Console → Authentication → Settings → **Authorized domains** → add your
+   `*.vercel.app` domain (and any custom domain). `localhost` is allowed by default for dev.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Firebase backend
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Auth:** Email/Password + Google (client SDK). Roles live in `users/{uid}` and are
+  enforced by security rules; the super-admin is bootstrapped by email.
+- **Firestore:** rules in [`firestore.rules`](firestore.rules), indexes in
+  [`firestore.indexes.json`](firestore.indexes.json), project in [`.firebaserc`](.firebaserc).
 
-## Deploy on Vercel
+Deploy rules/indexes with the Firebase CLI (separate from the Vercel deploy):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+firebase deploy --only firestore:rules,firestore:indexes
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> Super-admin access is restricted to a single email, mirrored in **both**
+> `firestore.rules` (`isSuperAdmin()`) and `lib/constants.ts` (`SUPER_ADMIN_EMAILS`).
+> Keep them in sync.
+
+## Notes
+
+- The project runs on Firebase's free **Spark** plan: no Cloud Storage, Cloud Functions, or
+  Admin SDK. Email/SMS notification *delivery* is therefore not wired yet — in-app
+  notifications work, and delivery preferences are saved ready for a future sender.

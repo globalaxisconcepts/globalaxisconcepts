@@ -1,0 +1,122 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(companyId) {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/companies/$(companyId)).data.ownerUid == request.auth.uid;
+    }
+
+    // A staff member is "linked" once their company staff doc carries their uid
+    // (set by the owner or via the email-gated claim below). This is the TRUSTED
+    // source for staff authorization — never the forgeable users/{uid} mirror.
+    function isLinkedStaff(companyId, staffId) {
+      return isSignedIn()
+        && staffId != null
+        && exists(/databases/$(database)/documents/companies/$(companyId)/staff/$(staffId))
+        && get(/databases/$(database)/documents/companies/$(companyId)/staff/$(staffId)).data.uid == request.auth.uid;
+    }
+
+    // Platform owner(s). Email-based bootstrap so the first super-admin needs no Admin SDK.
+    function isSuperAdmin() {
+      return isSignedIn()
+        && request.auth.token.email in ['globalaxisconcepts@gmail.com'];
+    }
+
+    // ── Companies: public profile, owner-managed ────────────────────────────
+    match /companies/{companyId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+
+      // Shown publicly on the booking microsite:
+      match /services/{id} { allow read: if true;  allow write: if isOwner(companyId); }
+      match /gallery/{id}  { allow read: if true;  allow write: if isOwner(companyId); }
+
+      // Staff are public-read (the booking page lists them). The owner manages
+      // them; an invited staff member may claim their slot once — they may only
+      // set `uid` to their own, only when it's unclaimed, and only if their
+      // signed-in email matches the email the owner invited.
+      match /staff/{id} {
+        allow read: if true;
+        allow write: if isOwner(companyId);
+        allow update: if isSignedIn()
+          && resource.data.email == request.auth.token.email
+          && (!('uid' in resource.data) || resource.data.uid == '' || resource.data.uid == request.auth.uid)
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid']);
+      }
+
+      // Private to the business:
+      match /customers/{id} { allow read, write: if isOwner(companyId); }
+
+      // Bookings hold customer PII. The owner reads all; a linked staff member
+      // reads the ones assigned to them; a signed-in customer reads their own.
+      // Anyone (incl. guests) can create one through the public booking flow.
+      match /bookings/{id} {
+        allow read, update, delete: if isOwner(companyId);
+        allow read: if isLinkedStaff(companyId, resource.data.staffId);
+        allow read: if isSignedIn() && resource.data.customerUid == request.auth.uid;
+        allow create: if true;
+      }
+
+      // In-app notifications for the owner + assigned staff. Created by the
+      // public booking flow (like bookings); read/cleared by their audience.
+      match /notifications/{id} {
+        allow read: if isOwner(companyId) || isLinkedStaff(companyId, resource.data.staffId);
+        allow create: if true;
+        allow update: if isOwner(companyId)
+          || (isLinkedStaff(companyId, resource.data.staffId)
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']));
+        allow delete: if isOwner(companyId);
+      }
+
+      // Public, PII-free slot markers used to show availability + lock a slot.
+      match /booked/{slotId} {
+        allow read: if true;
+        allow create: if !exists(/databases/$(database)/documents/companies/$(companyId)/booked/$(slotId));
+        allow update, delete: if isOwner(companyId);
+      }
+    }
+
+    // ── Slug registry: public read (availability check), claim-once ─────────
+    match /slugs/{slug} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && !exists(/databases/$(database)/documents/slugs/$(slug));
+      allow update, delete: if false;
+    }
+
+    // ── Per-user profile (role + companyId) ─────────────────────────────────
+    match /users/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isSuperAdmin());
+      allow create, update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if false;
+
+      // A customer's own copy of the bookings they made while signed in, so the
+      // account page can list them without a cross-company query.
+      match /myBookings/{id} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
+    }
+
+    // ── CMS / catalog content: public read, super-admin writes ──────────────
+    match /plans/{id}      { allow read: if true; allow write: if isSuperAdmin(); }
+    match /categories/{id} { allow read: if true; allow write: if isSuperAdmin(); }
+    match /countries/{id}  { allow read: if true; allow write: if isSuperAdmin(); }
+    match /blogs/{id}      { allow read: if true; allow write: if isSuperAdmin(); }
+    match /faqs/{id}       { allow read: if true; allow write: if isSuperAdmin(); }
+    match /pages/{id}      { allow read: if true; allow write: if isSuperAdmin(); }
+
+    // ── Contact messages: anyone submits, super-admin reads ─────────────────
+    match /contactMessages/{id} {
+      allow create: if true;
+      allow read, update, delete: if isSuperAdmin();
+    }
+  }
+}

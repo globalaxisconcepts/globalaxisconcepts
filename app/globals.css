@@ -1,26 +1,192 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ----------------------------------------------------------------------------
+   Global Axis Concepts — design tokens
+   Extracted from the prototype (Global Axis Concepts.dc.html):
+   primary #286efb · headings Poppins · body DM Sans 19/1.6 · eyebrow JetBrains Mono
+---------------------------------------------------------------------------- */
+@theme {
+  /* Brand */
+  --color-brand: #286efb;
+  --color-brand-dark: #1b5ce0;
+  --color-brand-darker: #1750c4;
+  --color-brand-tint: #eaf1ff;
+  --color-brand-tint-2: #cfe0ff;
+  --color-brand-soft: #f4f8ff;
+
+  /* Ink / text */
+  --color-ink: #0f1729;
+  --color-ink-800: #1a2233;
+  --color-ink-700: #3a4254;
+  --color-body: #5b6472;
+  --color-muted: #9aa3b2;
+
+  /* Surfaces & borders */
+  --color-surface: #ffffff;
+  --color-canvas: #f7f9fc;
+  --color-canvas-2: #f1f3f7;
+  --color-line: #e6e9f0;
+  --color-line-soft: #eef1f6;
+  --color-line-strong: #e0e6f0;
+
+  /* Semantic */
+  --color-success: #1f9d57;
+  --color-success-tint: #e7f8ee;
+  --color-warning: #c77700;
+  --color-warning-tint: #fdf2dd;
+  --color-danger: #e0395e;
+  --color-danger-tint: #fdeaf0;
+
+  /* Accents (category tags / feature tiles) */
+  --color-accent-purple: #7c5cfc;
+  --color-accent-purple-tint: #efeaff;
+  --color-accent-teal: #0fa3a3;
+  --color-accent-teal-tint: #e2f6f6;
+  --color-accent-orange: #e0793b;
+  --color-accent-orange-tint: #fcefe6;
+
+  /* Typography */
+  --font-display: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  /* Radii */
+  --radius-sm: 10px;
+  --radius-btn: 11px;
+  --radius-card: 15px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+  --radius-pill: 999px;
+
+  /* Shadows (blue-tinted, from prototype) */
+  --shadow-xs: 0 4px 22px rgba(40, 110, 251, 0.05);
+  --shadow-card: 0 12px 36px rgba(40, 110, 251, 0.07);
+  --shadow-card-hover: 0 16px 36px rgba(40, 110, 251, 0.12);
+  --shadow-btn: 0 10px 24px rgba(40, 110, 251, 0.3);
+  --shadow-btn-hover: 0 12px 28px rgba(40, 110, 251, 0.36);
+  --shadow-pop: 0 10px 28px rgba(15, 23, 41, 0.14);
+  --shadow-ring: 0 0 0 3px rgba(40, 110, 251, 0.12);
+
+  /* Layout */
+  --spacing-shell: 1140px;
+
+  /* Easing */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ----------------------------------------------------------------------------
+   Base
+---------------------------------------------------------------------------- */
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  html,
+  body {
+    /* Prevent rubber-band scroll chaining that can reveal the page background. */
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    background: var(--color-surface);
+    color: var(--color-body);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    color: var(--color-ink);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+  }
+
+  ::selection {
+    background: var(--color-brand-tint-2);
+    color: var(--color-ink);
+  }
+
+  /* Accessible keyboard focus everywhere */
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-ring);
+    border-radius: 6px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ----------------------------------------------------------------------------
+   Utilities & helpers
+---------------------------------------------------------------------------- */
+@layer utilities {
+  .shell {
+    width: 100%;
+    max-width: var(--spacing-shell);
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-brand);
+  }
+
+  /* Heading display sizes matching the prototype */
+  .text-display {
+    font-size: clamp(2.25rem, 1.4rem + 3vw, 3.375rem); /* ~36 → 54px */
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    font-weight: 700;
+  }
+  .text-h2 {
+    font-size: clamp(1.75rem, 1.2rem + 1.8vw, 2.25rem); /* ~28 → 36px */
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  /* Soft blue radial blobs behind illustrations */
+  .blob {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(2px);
+    background: radial-gradient(circle at 30% 30%, var(--color-brand-tint), transparent 70%);
+    pointer-events: none;
+  }
+
+  .bg-grid-soft {
+    background-image:
+      linear-gradient(var(--color-line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-line-soft) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .animate-rise {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: rise 0.7s var(--ease-out-soft) forwards;
+  }
+
+  @keyframes rise {
+    to { opacity: 1; transform: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-rise { animation: none; opacity: 1; transform: none; }
+  }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
