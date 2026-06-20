@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { signInEmail, signInGoogle, authErrorMessage } from "@/lib/firebase/auth";
 import { getUserProfile } from "@/lib/firebase/db";
-import { homePathForUser } from "@/lib/auth-routing";
+import { homePathForUser, safeInternalPath } from "@/lib/auth-routing";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -28,7 +28,7 @@ function GoogleIcon({ className }: { className?: string }) {
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectParam = searchParams.get("redirect");
+  const redirectParam = safeInternalPath(searchParams.get("redirect"));
   const { toast } = useToast();
   const { user, profile, loading: authLoading } = useAuth();
 
